@@ -1,95 +1,82 @@
-import * as Notiflix from 'notiflix';
-import { fetchBreeds, fetchCatByBreed } from './js/cat-api.js';
+import { fetchBreeds, fetchCatByBreed } from './js/cat-api';
+import Notiflix from 'notiflix';
 
-const breedSelect = document.querySelector('.breed-select');
-const loader = document.querySelector('.loader');
-const error = document.querySelector('.error');
-const catInfo = document.querySelector('.cat-info');
+const selectEL = document.querySelector('.breed-select');
+const loaderEl = document.querySelector('.loader');
+const errorEl = document.querySelector('.error');
+const cardEl = document.querySelector('.cat-info');
 
-let breedsLoaded = false;
+hideElement(selectEL);
+hideElement(errorEl);
 
 fetchBreeds()
-.then(breeds => {
-    breedsLoaded = true;
-    breeds.forEach(breed => {
-        const option = document.createElement('option');
-        option.value = breed.id;
-        option.text = breed.name;
-        breedSelect.appendChild(option);
-    });
-        breedSelect.addEventListener('change', handleBreedSelect);
-    loader.style.display = 'none';
-    breedSelect.style.display = 'block';
+  .then(breeds => {
+    showElement(selectEL);
+    renderOptionEl(breeds);
+    hideElement(loaderEl);
+    selectEL.addEventListener('change', renderCat);
+  })
+  .catch(error => {
+    hideElement(loaderEl);
+    showError(error);
+  });
+
+function renderOptionEl(breeds) {
+  const markup = breeds
+    .map(breed => {
+      return `
+          <option value='${breed.id}'>${breed.name}</option>
+      `;
+    })
+    .join('');
+
+  selectEL.innerHTML = markup;
+}
+
+function renderCat() {
+  hideElement(cardEl);
+  showElement(loaderEl);
+  const breedId = selectEL.value;
+
+  fetchCatByBreed(breedId)
+    .then(cat => {
+      const imageUrl = cat[0].url;
+      const breedName = cat[0].breeds[0].name;
+      const description = cat[0].breeds[0].description;
+      const temperament = cat[0].breeds[0].temperament;
+
+      const markup = `<h2>${breedName}</h2>
+        <p class="desc-text"><strong>Description:</strong> ${description}</p>
+        <p class="temper-text"> <strong>Temperament:</strong> ${temperament}</p>
+        <img src="${imageUrl}" width=320 alt="${breedName}" />
+      `;
+
+      cardEl.innerHTML = markup;
+      hideElement(loaderEl);
+      showElement(cardEl);
     })
     .catch(error => {
-    loader.style.display = 'none';
-    error.style.display = 'block';
+      showError(error);
+      hideElement(loaderEl);
     });
-
-    function showLoader() {
-    loader.style.display = 'block';
-}
-    function hideLoader() {
-    loader.style.display = 'none';
 }
 
-function handleBreedSelect() {
-    const selectedBreedId = breedSelect.value;
-    error.style.display = 'none';
-    catInfo.innerHTML = '';
-    showLoader()
-
-    if (!breedsLoaded) {
-    return;
-}
-
-    fetchCatByBreed(selectedBreedId)
-        .then(catData => {
-            hideLoader();
-            
-        if (!catData) {
-        throw new Error('No image found for the selected breed');
+function showError(error) {
+  Notiflix.Notify.failure(
+    `Oops! 😮 This what's went wrong: ${error}! Try reloading the page!`,
+    {
+      position: 'center-top',
+      timeout: 4500,
+      pauseOnHover: true,
+      clickToClose: true,
     }
+  );
+}
 
-    const { imageUrl, breed, description, temperament } = catData;
+function hideElement(element) {
+  element.classList.add('hidden');
+}
 
-    const image = document.createElement('img');
-    image.setAttribute('src', imageUrl);
-    image.setAttribute('width', '200');
-    image.setAttribute('height', '100%');
-    image.style.float = 'left';
-    catInfo.appendChild(image);
-
-    const textContainer = document.createElement('div');
-    textContainer.style.marginLeft = '20px';
-    textContainer.style.padding = '10px';
-    textContainer.style.display = 'flex';
-    textContainer.style.alignItems = 'center';
-
-    const textContent = document.createElement('div');
-    textContent.style.marginLeft = '20px';
-
-    const breedName = document.createElement('h2');
-    breedName.style.color = '#2E2F42';
-    breedName.textContent = breed;
-    textContent.appendChild(breedName);
-
-    const descriptionPara = document.createElement('p');
-    descriptionPara.style.marginRight = '350px';
-    descriptionPara.style.textAlign = 'justify';
-    descriptionPara.textContent = description;
-    textContent.appendChild(descriptionPara);
-
-    const temperamentPara = document.createElement('p');
-    temperamentPara.textContent = `TEMPERAMENT:
-        ${temperament}`;
-    textContent.appendChild(temperamentPara);
-    textContainer.appendChild(textContent);
-    catInfo.appendChild(textContainer);
-    })
-        .catch(error => {
-        hideLoader();
-            Notiflix.Notify.failure('Oops! Something went wrong! Try reloading the page!!!');   
-        
-    });
+function showElement(element) {
+  element.classList.remove('hidden');
 }
